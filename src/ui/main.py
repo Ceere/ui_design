@@ -19,7 +19,7 @@ sys.path.insert(0, os.path.join(project_root, 'src'))
 
 
 from nicegui import ui
-from ui.connect_device import connect_device_page
+from ui.topic_page import topic_page
 from device.device import device
 from ros.ros_bridge import RosBridge
 
@@ -29,10 +29,9 @@ def page():
     ui.page_title('Qualcomm Robotics SDK Tools')
     with ui.header(elevated=True).style('background-color: #4f6db9'):
         ui.link('Qualcomm Robotics SDK', '/').classes('text-red-500')
-        ui.link('Connect device', '/connect_device_page').classes('text-red-500')
+        ui.link('Topic', '/topic_page').classes('text-red-500')
     
     with ui.column().classes('flex w-full items-center justify-center'):
         ui.label('Welcome to use qualcomm robotics sdk and more').classes('text-blue-500')
-        ui.button("Continue").on_click(lambda: ui.navigate.to('/connect_device_page')).classes('mt-4')
 
 ui.run()

@@ -5,7 +5,7 @@ ROS连接管理器 - 整合ROS bridge和topic管理
 import logging
 from typing import Dict, List, Optional, Callable, Any
 from ..src.ros.ros_bridge import RosBridge
-from .ros_topic import RosTopic
+from ..src.ros.ros_topic import RosTopic
 
 
 class ROSManager:
