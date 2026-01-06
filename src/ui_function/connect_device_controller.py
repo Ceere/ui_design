@@ -1,11 +1,11 @@
 """
-Connect Device Controller
-处理连接设备的业务逻辑，与UI分离
+用于主页面，负责device对象，ssh对象，ros bridge对象的创建以及初始化
 """
 from ros.ros_bridge import get_ros_bridge
 from device.device import get_device
-from ros_function.connect_ros_bridge import connect_device
+from ssh.ssh import get_ssh_manager
 import datetime
+import logging
 
 
 class ConnectDeviceController:
@@ -14,28 +14,19 @@ class ConnectDeviceController:
     def __init__(self):
         """初始化控制器"""
         self.ros_bridge = get_ros_bridge()
+        self.ssh_manager = get_ssh_manager()
         self.device = get_device()
-        
-    def get_connection_status(self) -> dict:
-        """获取连接状态
-        
-        Returns:
-            dict: 包含连接状态信息的字典
-        """
-        status = {
-            'is_connected': self.ros_bridge.ros_is_connected,
-            'device_ip': getattr(self.device, 'device_ip', None),
-            'ros_host': getattr(self.ros_bridge, 'ros_host', None),
-            'ros_port': getattr(self.ros_bridge, 'ros_port', None),
-            'update_time': datetime.datetime.now().strftime('%H:%M:%S')
-        }
-        return status
     
-    def connect_to_device(self, ip_address: str) -> tuple[bool, str]:
-        """连接到设备
+    def init_bridge_ssh(self, ip_address: str, ssh_port: int = 22, ros_port: int = 9090, 
+                         username: str = "root", password: str = None) -> tuple[bool, str]:
+        """连接到设备 - 同时连接ROS和SSH
         
         Args:
             ip_address: 设备IP地址
+            ssh_port: SSH端口号
+            ros_port: ROS桥接端口号
+            username: SSH用户名
+            password: SSH密码
             
         Returns:
             tuple[bool, str]: (是否成功, 消息)
@@ -44,14 +35,42 @@ class ConnectDeviceController:
             return False, 'Please enter a device IP address'
         
         try:
-            # 尝试连接
-            success = connect_device(ip_address)
+            # 更新device的IP
+            self.device.device_ip = ip_address
             
-            if success:
-                return True
+            # 连接ROS桥接器（使用指定的端口）
+            ros_success = False
+            try:
+                # 调用ROS桥接器的连接方法，指定端口
+                if self.ros_bridge.connect_ros_bridge(ros_host=ip_address, ros_port=ros_port):
+                    ros_success = True
+                else:
+                    ros_success = False
+            except Exception as ros_e:
+                logging.error(f"ROS连接失败: {ros_e}")
+                ros_success = False
+            
+            # 尝试连接SSH
+            ssh_success = False
+            try:
+                ssh_success = self.ssh_manager.connect(
+                    hostname=ip_address,
+                    username=username,
+                    password=password,
+                    port=ssh_port
+                )
+            except Exception as ssh_e:
+                logging.warning(f"SSH连接尝试失败: {ssh_e}")
+            
+            if ros_success:
+                message = f"成功连接到设备 {ip_address}"
+                if ssh_success:
+                    message += f" (ROS:{ros_port}和SSH:{ssh_port}连接成功)"
+                else:
+                    message += f" (ROS:{ros_port}连接成功，SSH连接失败)"
+                return True, message
             else:
-                return False
+                return False, f"无法连接到设备 {ip_address} (ROS端口: {ros_port}) (SSH端口: {ssh_port})"
             
         except Exception as e:
             return False, f'Connection error: {str(e)}'
-    

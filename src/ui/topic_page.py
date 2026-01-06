@@ -1,35 +1,37 @@
 from nicegui import ui
-from ui_function.connect_device_controller import ConnectDeviceController
-from ui_function.bridge_controller import BridgeController
 from ui_function.topic_controller import handle_topic_click
+from ui_function.get_object import get_object_instance
 from ros.ros_topic import RosTopic
 from ui.image_process import handle_image_message
+from ui_function.bridge_controller import BridgeController
+
 import logging
+
+device_instance,ros_bridge_instance,ssh_instance = get_object_instance()
+bridge_controller = BridgeController()
 
 @ui.page('/topic_page')
 def topic_page():
     ui.page_title('Qualcomm Robotics SDK Tools')
     
-    # 创建控制器实例
-    device_controller = ConnectDeviceController()
-    bridge_controller = BridgeController()
-    
+    # 标题栏区域
     with ui.header(elevated=True).style('background-color: #4f6db9'):
         ui.link('Qualcomm Robotics SDK', '/').classes('text-red-500')
         ui.link('Topic', '/topic_page').classes('text-red-500')
     
     # 主内容区域 - 数据展示
     with ui.column().classes('w-full p-4'):
-        # 数据展示标题
+
         ui.label('Topic').classes('text-h5 font-bold mt-4')
-        
-        # 消息显示区域
+
+        # 内容显示
         with ui.card().classes('w-full mt-4'):
             # 消息显示区域
             topic_name_type = ui.label('Please select topic to view').classes('text-body1 mt-2')
             
             # 消息内容区域（使用代码块显示格式化的消息）
             message_content = ui.label().classes('w-full mt-2 max-h-96 overflow-auto')
+            # 图片显示，先不使用CSS样式
             image_content = ui.image()
             
             def update_message_display():
@@ -68,47 +70,36 @@ def topic_page():
                     image_content.set_visibility(False)
             
             # 添加定时器更新消息显示
-            ui.timer(1.0, update_message_display)
+            ui.timer(0.33, update_message_display)
 
+    # 左边栏区域
     with ui.left_drawer().style('background-color: #d7e3f4'):
         # 状态栏区域
         with ui.card().style('background-color: #ffffff; margin-bottom: 5px;'):
             with ui.card_section():
                 ui.label('Device Status').classes('text-h6 font-bold')
-                
+
                 # 状态信息
-                status_text = ui.label('N/A').classes('text-body1')
-                ros_host_label = ui.label('N/A').classes('text-body2')
+                ip_text = ui.label('IP: Disconnected').classes('text-body2')
+                ros_host_label = ui.label('Ros Bridge Port: Disconnected').classes('text-body2')
+                ssh_status_label = ui.label('SSH: Disconnected').classes('text-body2')
                 update_time_label = ui.label('N/A').classes('text-body2 text-grey')
 
                 def update_status_display():
                     """更新状态栏显示"""
-                    # 使用控制器获取和格式化状态
-                    status = device_controller.get_connection_status()
-
                     # 更新UI标签
-                    status_text.set_text(f"ROS Server: {status['is_connected']}")
-                    ros_host_label.set_text(f"Ros Bridge:{status['ros_host']}:{status['ros_port']}")
-                    update_time_label.set_text(status['update_time'])
+                    if ros_bridge_instance.ros_is_connected:
+                        ip_text.set_text(f"IP: {ros_bridge_instance.ros_host}")
+                        ros_host_label.set_text(f"Ros Bridge Port: {ros_bridge_instance.ros_port}")
 
-        
-        # Connect to device
-        with ui.column():
-            device_ip_input = ui.input(label='Device IP', placeholder='localhost', value='localhost')
-            
-            def handle_connect_click():
-                """处理连接按钮点击"""
-                ip = device_ip_input.value
-                
-                # 使用控制器处理连接逻辑
-                device_controller.connect_to_device(ip)
+                    # 显示SSH状态
+                    if ssh_instance.is_connected is True:
+                        ssh_host_port = f"{ssh_instance.hostname}:{ssh_instance.port}"
+                        ssh_status_label.set_text(f"SSH: {ssh_host_port}")
 
-                # 更新状态栏
-                update_status_display()
-            
-            # 连接按钮
-            ui.button(text='Connect', on_click=handle_connect_click)
-        
+                    # 更新时间
+                    import datetime
+                    update_time_label.set_text(datetime.datetime.now().strftime('%H:%M:%S'))
         # Topic process
         with ui.column():
             ui.label('ROS Topics').classes('text-h6 font-bold mt-6')
@@ -133,9 +124,55 @@ def topic_page():
             
             # 设置点击事件，点击下拉按钮时刷新topic列表
             topic_list_item.on_click(refresh_topics)
-    
+        
+        # SSH Process
+        with ui.column():
+            ui.label('SSH Terminal').classes('text-h6 font-bold mt-6')
+            
+            # SSH命令输入和执行
+            ssh_command_input = ui.input(
+                label='SSH Command', 
+                placeholder='Enter command to execute...'
+                ).classes('w-full')
+                    
+
+            ssh_result_output = ui.textarea(
+                    label='Command Output',
+                    placeholder='Command output will appear here...'
+            ).classes('w-full h-48').props('readonly')
+            ssh_execute_btn = ui.button('Execute Command', color='primary')
+
+            def execute_ssh_command():
+                """执行SSH命令"""
+                if not ssh_instance.is_connected:
+                    ssh_result_output.set_value('')
+                    return
+                
+                command = ssh_command_input.value
+                if not command:
+                    ssh_result_output.set_value('')
+                    return
+                
+                # 显示执行中的状态
+                ssh_result_output.set_value('Executing...')
+                
+                # 执行命令
+                success, output, error = ssh_instance.execute_command(command)
+                
+                if success:
+                    # 合并标准输出和标准错误
+                    result = output
+                    if error:
+                        result += f"\n\nError output:\n{error}"
+                    ssh_result_output.set_value(result)
+                else:
+                    ssh_result_output.set_value(f"Error: {error}")
+            
+            # 绑定按钮事件
+            ssh_execute_btn.on_click(execute_ssh_command)
+
     def update_timer():
         # 定时更新状态栏
-        ui.timer(5.0, update_status_display)
+        ui.timer(1.0, update_status_display)
     
     update_timer()
