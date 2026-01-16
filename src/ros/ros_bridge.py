@@ -74,15 +74,11 @@ class RosBridge:
                     self.disconnect_ros_bridge()
                 
                 self.ros_client = roslibpy.Ros(self.ros_host, self.ros_port)
-                self.ros_client.run()
+                self.ros_client.run(timeout=1)
             
-            # 等待连接建立
-            import time
-            for _ in range(10):
                 if self.ros_client.is_connected:
                     logging.info(f"Connected to ROS at {self.ros_host}:{self.ros_port}")
                     return True
-                time.sleep(0.1)
             
             logging.error("Failed to connect to ROS")
             return False

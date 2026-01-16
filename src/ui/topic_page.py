@@ -125,51 +125,51 @@ def topic_page():
             # 设置点击事件，点击下拉按钮时刷新topic列表
             topic_list_item.on_click(refresh_topics)
         
-        # SSH Process
-        with ui.column():
-            ui.label('SSH Terminal').classes('text-h6 font-bold mt-6')
+        # # SSH Process
+        # with ui.column():
+        #     ui.label('SSH Terminal').classes('text-h6 font-bold mt-6')
             
-            # SSH命令输入和执行
-            ssh_command_input = ui.input(
-                label='SSH Command', 
-                placeholder='Enter command to execute...'
-                ).classes('w-full')
+        #     # SSH命令输入和执行
+        #     ssh_command_input = ui.input(
+        #         label='SSH Command', 
+        #         placeholder='Enter command to execute...'
+        #         ).classes('w-full')
                     
 
-            ssh_result_output = ui.textarea(
-                    label='Command Output',
-                    placeholder='Command output will appear here...'
-            ).classes('w-full h-48').props('readonly')
-            ssh_execute_btn = ui.button('Execute Command', color='primary')
+        #     ssh_result_output = ui.textarea(
+        #             label='Command Output',
+        #             placeholder='Command output will appear here...'
+        #     ).classes('w-full h-48').props('readonly')
+        #     ssh_execute_btn = ui.button('Execute Command', color='primary')
 
-            def execute_ssh_command():
-                """执行SSH命令"""
-                if not ssh_instance.is_connected:
-                    ssh_result_output.set_value('')
-                    return
+        #     def execute_ssh_command():
+        #         """执行SSH命令"""
+        #         if not ssh_instance.is_connected:
+        #             ssh_result_output.set_value('')
+        #             return
                 
-                command = ssh_command_input.value
-                if not command:
-                    ssh_result_output.set_value('')
-                    return
+        #         command = ssh_command_input.value
+        #         if not command:
+        #             ssh_result_output.set_value('')
+        #             return
                 
-                # 显示执行中的状态
-                ssh_result_output.set_value('Executing...')
+        #         # 显示执行中的状态
+        #         ssh_result_output.set_value('Executing...')
                 
-                # 执行命令
-                success, output, error = ssh_instance.execute_command(command)
+        #         # 执行命令
+        #         success, output, error = ssh_instance.execute_command(command)
                 
-                if success:
-                    # 合并标准输出和标准错误
-                    result = output
-                    if error:
-                        result += f"\n\nError output:\n{error}"
-                    ssh_result_output.set_value(result)
-                else:
-                    ssh_result_output.set_value(f"Error: {error}")
+        #         if success:
+        #             # 合并标准输出和标准错误
+        #             result = output
+        #             if error:
+        #                 result += f"\n\nError output:\n{error}"
+        #             ssh_result_output.set_value(result)
+        #         else:
+        #             ssh_result_output.set_value(f"Error: {error}")
             
-            # 绑定按钮事件
-            ssh_execute_btn.on_click(execute_ssh_command)
+        #     # 绑定按钮事件
+        #     ssh_execute_btn.on_click(execute_ssh_command)
 
     def update_timer():
         # 定时更新状态栏
