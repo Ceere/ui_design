@@ -31,8 +31,8 @@ def topic_page():
             
             # 消息内容区域（使用代码块显示格式化的消息）
             message_content = ui.label().classes('w-full mt-2 max-h-96 overflow-auto')
-            # 图片显示，先不使用CSS样式
-            image_content = ui.image()
+            # 使用原生HTML img标签避免闪烁，配合JavaScript直接更新
+            ui.html('<img id="video_frame" style="width:100%; height:auto; background: #000; border-radius: 8px; object-fit: contain; display: none;" />', sanitize=False)
             
             def update_message_display():
                 """更新消息显示"""
@@ -44,30 +44,56 @@ def topic_page():
                         image_origin = RosTopic.cls_latest_message
                         img_base64 = handle_image_message(image_origin)
                         if img_base64:
-                            image_content.set_source(f"data:image/png;base64,{img_base64}")
-                            image_content.set_visibility(True)
+                            # 使用JavaScript直接更新img标签，避免闪烁
+                            ui.run_javascript(f'''
+                                const img = document.getElementById("video_frame");
+                                if (img) {{
+                                    img.src = "data:image/png;base64,{img_base64}";
+                                    img.style.display = "block";
+                                }}
+                            ''')
                             message_content.set_visibility(False)
                         else:
                             # 如果图片处理失败，显示错误信息
-                            message_content.set_text("无法处理图片消息")
+                            message_content.set_text("不支持处理该类型图片格式")
                             message_content.set_visibility(True)
-                            image_content.set_visibility(False)
+                            ui.run_javascript('''
+                                const img = document.getElementById("video_frame");
+                                if (img) {
+                                    img.style.display = "none";
+                                }
+                            ''')
                     elif RosTopic.cls_current_topic_type == 'std_msgs/msg/String':
                         # 显示文本，隐藏图片
                         message_content.set_text(RosTopic.cls_latest_message['data'])
                         message_content.set_visibility(True)
-                        image_content.set_visibility(False)
+                        ui.run_javascript('''
+                            const img = document.getElementById("video_frame");
+                            if (img) {
+                                img.style.display = "none";
+                            }
+                        ''')
                     else:
                         # 其他类型的消息
                         message_content.set_text(f"消息类型: {RosTopic.cls_current_topic_type}\n数据: {str(RosTopic.cls_latest_message)}")
                         message_content.set_visibility(True)
-                        image_content.set_visibility(False)
+                        ui.run_javascript('''
+                            const img = document.getElementById("video_frame");
+                            if (img) {
+                                img.style.display = "none";
+                            }
+                        ''')
                 else:
                     # 没有消息时，显示提示信息
                     topic_name_type.set_text('Please select topic to view')
                     message_content.set_text('')
                     message_content.set_visibility(True)
-                    image_content.set_visibility(False)
+                    ui.run_javascript('''
+                        const img = document.getElementById("video_frame");
+                        if (img) {
+                            img.style.display = "none";
+                        }
+                    ''')
             
             # 添加定时器更新消息显示
             ui.timer(0.33, update_message_display)

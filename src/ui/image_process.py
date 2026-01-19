@@ -3,6 +3,14 @@ import base64
 import numpy as np
 from typing import Optional
 
+def nv12_to_bgr(nv12_image, width, height):
+        """
+        Convert NV12 image to BGR format.
+        """
+        yuv = nv12_image.reshape((height * 3 // 2, width))
+        bgr = cv2.cvtColor(yuv, cv2.COLOR_YUV2BGR_NV12)
+        return bgr
+
 def process_image_message(msg) -> Optional[np.ndarray]:
     """将 ROS 消息转换为 numpy 图像数组"""
     try:
@@ -13,8 +21,8 @@ def process_image_message(msg) -> Optional[np.ndarray]:
             return img_array.reshape((msg['height'], msg['width'], 3))
         elif msg['encoding'] == 'rgb8':
             return img_array.reshape((msg['height'], msg['width'], 3))
-        else:
-            raise ValueError(f"不支持的编码格式: {msg['encoding']}")
+        elif msg['encoding'] == 'nv12':
+            return nv12_to_bgr(img_array, msg['width'], msg['height'])
     except Exception as e:
         return None
 
