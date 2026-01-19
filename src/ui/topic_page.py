@@ -6,6 +6,7 @@ from ui.image_process import handle_image_message
 from ui_function.bridge_controller import BridgeController
 
 import logging
+import asyncio
 
 device_instance,ros_bridge_instance,ssh_instance = get_object_instance()
 bridge_controller = BridgeController()
@@ -133,23 +134,43 @@ def topic_page():
             # Topic列表容器
             topic_list_item = ui.dropdown_button("Select Topic", auto_close=True)
             
-            def refresh_topics():
-                """刷新topic列表"""
+            async def refresh_topics():
+                """异步刷新topic列表"""
                 # 清空下拉菜单
                 topic_list_item.clear()
                 
-                # 获取最新的topic列表
-                topic_list = bridge_controller.get_all_topics()
-                logging.info(f"刷新topic列表，获取到 {len(topic_list)} 个topics")
+                # 显示加载状态
+                topic_list_item.props('loading')
                 
-                # 添加topic项到下拉菜单
-                with topic_list_item:
-                    for topic in topic_list:
-                        topic_name = topic['name']
-                        ui.item(topic_name, on_click=lambda t=topic: handle_topic_click(t))
+                try:
+                    # 在后台线程中执行耗时操作，避免阻塞UI
+                    loop = asyncio.get_event_loop()
+                    topic_list = await loop.run_in_executor(
+                        None,  # 使用默认线程池
+                        bridge_controller.get_all_topics
+                    )
+                    
+                    logging.info(f"刷新topic列表，获取到 {len(topic_list)} 个topics")
+                    
+                    # 添加topic项到下拉菜单
+                    with topic_list_item:
+                        for topic in topic_list:
+                            topic_name = topic['name']
+                            ui.item(topic_name, on_click=lambda t=topic: handle_topic_click(t))
+                            
+                except Exception as e:
+                    logging.error(f"刷新topic列表失败: {e}")
+                    ui.notify(f"获取topic列表失败: {e}", type='negative', position='top')
+                finally:
+                    # 移除加载状态
+                    topic_list_item.props(remove='loading')
+            
+            def on_topic_button_click():
+                """处理topic按钮点击事件"""
+                asyncio.create_task(refresh_topics())
             
             # 设置点击事件，点击下拉按钮时刷新topic列表
-            topic_list_item.on_click(refresh_topics)
+            topic_list_item.on_click(on_topic_button_click)
         
         # # SSH Process
         # with ui.column():
