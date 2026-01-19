@@ -11,7 +11,7 @@ sudo apt install ros-jazzy-rosbridge-server
 sudo apt install ros-jazzy-rosapi
 source /opt/ros/jazzy/setup.bash
 ros2 run rosapi rosapi_node &
-ros2 run rosbridge_server rosbridge_websocket
+ros2 launch rosbridge_server rosbridge_websocket_launch.xml
 ```
 
 ## Host端环境配置
