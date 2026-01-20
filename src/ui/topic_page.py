@@ -2,7 +2,7 @@ from nicegui import ui
 from ui_function.topic_controller import handle_topic_click
 from ui_function.get_object import get_object_instance
 from ros.ros_topic import RosTopic
-from ui.image_process import handle_image_message
+from ui_function.image_process import handle_image_message
 from ui_function.bridge_controller import BridgeController
 
 import logging

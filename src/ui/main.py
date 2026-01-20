@@ -61,6 +61,32 @@ def page():
                 username_val = username.value if username.value else "root"
                 password_val = password.value if password.value else None
                 
+                # 检查是否已经连接到相同的设备
+                from ui_function.get_object import get_object_instance
+                
+                # 使用get_object_instance获取实例
+                _, ros_bridge, ssh_manager = get_object_instance()
+                
+                # 检查ROS是否已经连接到相同的IP和端口
+                ros_already_connected = (
+                    ros_bridge.ros_is_connected and 
+                    ros_bridge.ros_host == ip and 
+                    ros_bridge.ros_port == ros_port_val
+                )
+                
+                # 检查SSH是否已经连接到相同的IP和端口
+                ssh_already_connected = (
+                    ssh_manager.is_connected and
+                    ssh_manager.hostname == ip and
+                    ssh_manager.port == ssh_port_val and
+                    ssh_manager.username == username_val
+                )
+                
+                # 如果已经连接到相同的设备，直接跳转
+                if ros_already_connected and ssh_already_connected:
+                    ui.navigate.to('/topic_page')
+                    return
+                
                 # 使用控制器处理连接逻辑
                 success, message = device_controller.init_bridge_ssh(
                     ip_address=ip,
